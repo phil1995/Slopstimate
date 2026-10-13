@@ -243,6 +243,28 @@ export class RoomObject extends DurableObject<Env> {
           }
           return json(this.snapshot(state));
         }
+        if (
+          (path === '/reveal' || path === '/admin/reveal') &&
+          request.method === 'POST'
+        ) {
+          const tokenHash = await hash(bearer(request)!);
+          if (
+            tokenHash !== state.adminTokenHash &&
+            !state.members.some((member) => member.tokenHash === tokenHash)
+          )
+            throw new ApiError(
+              401,
+              'Join the room before revealing estimates.',
+            );
+          const input = object(await body(request), ['round']);
+          if (integer(input.round, 'Round') !== state.round)
+            throw new ApiError(409, 'The round changed. Please try again.');
+          if (!state.revealed) {
+            state.revealed = true;
+            await this.commit(state);
+          }
+          return json(this.snapshot(state));
+        }
         if (path === '/leave' && request.method === 'POST') {
           const member = (await this.authenticate(request, state))!;
           object(await body(request), []);
@@ -280,18 +302,15 @@ export class RoomObject extends DurableObject<Env> {
               if (changed) this.reset(state);
               await this.commit(state);
             }
-          } else if (path === '/admin/reveal' || path === '/admin/reset') {
+          } else if (path === '/admin/reset') {
             const input = object(await body(request), ['round']);
             const round = integer(input.round, 'Round');
             if (round !== state.round) {
               // Retrying the same reset is harmless. Future rounds are never accepted.
-              if (!(path === '/admin/reset' && round < state.round))
+              if (round > state.round)
                 throw new ApiError(409, 'The round changed. Please try again.');
-            } else if (path === '/admin/reset') {
+            } else {
               this.reset(state);
-              await this.commit(state);
-            } else if (!state.revealed) {
-              state.revealed = true;
               await this.commit(state);
             }
           } else throw new ApiError(404, 'Action not found.');

@@ -6,7 +6,7 @@ Fresh-account deployment is to be verified by the repository owner. Local runtim
 2. Confirm no manual database creation, API keys, or secrets are requested. Verify the `ROOM` binding and SQLite `v1` migration were provisioned.
 3. Open the supplied `workers.dev` URL. Create a room in Browser A and join with a name. Save the room URL.
 4. Open the URL in Browsers B and C (separate profiles). Join and vote. Inspect HTTP responses and incoming WebSocket frames: unrevealed member objects must have **no `vote` key**, including on reconnect. A browser knows its own outbound choice; the server never echoes it before reveal.
-5. Reveal in A and confirm all profiles immediately show the values. Reset and confirm they disappear. Changing the deck should also reset the round.
+5. Reveal as a participant in B and confirm all profiles immediately show values beside participant names; the estimate boxes retain their choices. Reset and confirm they disappear. Changing the deck should also reset the round.
 6. Refresh `/r/<roomId>` directly and confirm SPA routing works. Open a second tab in A and confirm it counts as one member.
 7. Close every tab, revisit later, and confirm A remains admin and names/settings/round persist. Leave the room idle with live sockets and confirm it hibernates/reconnects without losing the round.
 8. Test at phone width, use only the keyboard to vote and open/close settings, and disconnect/reconnect the network.

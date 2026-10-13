@@ -74,15 +74,9 @@
           <div class="art-label">
             <Icon name="spark" size={16} /> Great minds estimate differently.
           </div>
-          <div class="floating-card card-three">
-            <span>3</span><b>3</b><span>3</span>
-          </div>
-          <div class="floating-card card-five">
-            <span>5</span><b>5</b><span>5</span>
-          </div>
-          <div class="floating-card card-eight">
-            <span>8</span><b>8</b><span>8</span>
-          </div>
+          <div class="floating-card card-three"><b>3</b></div>
+          <div class="floating-card card-five"><b>5</b></div>
+          <div class="floating-card card-eight"><b>8</b></div>
           <div class="art-note">
             <span class="note-avatars"><i>A</i><i>J</i><i>M</i></span> Everyone gets
             a say.

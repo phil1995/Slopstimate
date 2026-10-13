@@ -243,8 +243,29 @@ export class RoomController {
         this.selected = vote;
     });
   }
+  async reveal(): Promise<boolean> {
+    if (
+      !this.room ||
+      (!this.hasMembership && !this.isAdmin) ||
+      this.connection !== 'connected'
+    )
+      return false;
+    const round = this.room.round;
+    const saved = readIdentity(this.id);
+    const result = await this.action(async () => {
+      this.apply(
+        await api<RoomSnapshot>(
+          `${this.path}/reveal`,
+          { round },
+          this.hasMembership ? saved.memberToken : saved.adminToken,
+        ),
+      );
+      return true;
+    });
+    return result ?? false;
+  }
   async admin(
-    action: 'reveal' | 'reset' | 'settings',
+    action: 'reset' | 'settings',
     settings?: { title: string; deck: string[] },
   ): Promise<boolean> {
     if (!this.room || !this.isAdmin || this.connection !== 'connected')

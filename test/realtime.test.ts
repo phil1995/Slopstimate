@@ -34,7 +34,7 @@ describe('authenticated realtime and presence', () => {
         .map((e) => e.version);
       expect(versions).toEqual([...versions].sort((x, y) => x - y));
     }
-    await h.request(`${path}/admin/reveal`, { round: 1 }, adminToken);
+    await h.request(`${path}/reveal`, { round: 1 }, adminToken);
     await waitUntil(() =>
       [a, duplicate, b].every((client) =>
         client.events.some(
@@ -74,6 +74,57 @@ describe('authenticated realtime and presence', () => {
     );
     b.ws.close();
     returning.ws.close();
+  });
+  it('broadcasts participant-triggered reveals to admins and other members and locks voting', async () => {
+    const { path, adminToken } = await h.room();
+    const first = await h.join(path, 'Alex');
+    const second = await h.join(path, 'Sam');
+    const admin = await h.socket(path, { adminToken });
+    const participant = await h.socket(path, {
+      memberToken: first.memberToken,
+    });
+    const other = await h.socket(path, { memberToken: second.memberToken });
+    await h.request(
+      `${path}/vote`,
+      { vote: '0.5', round: 1 },
+      first.memberToken,
+    );
+    await h.request(
+      `${path}/vote`,
+      { vote: '?', round: 1 },
+      second.memberToken,
+    );
+    for (const client of [admin, participant, other]) {
+      for (const event of client.events)
+        if (event.type === 'snapshot') assertPrivate(event.room);
+    }
+    expect(
+      (await h.request(`${path}/reveal`, { round: 1 }, first.memberToken))
+        .status,
+    ).toBe(200);
+    await waitUntil(() =>
+      [admin, participant, other].every((client) =>
+        client.events.some(
+          (event) =>
+            event.type === 'snapshot' &&
+            event.room.revealed &&
+            event.room.members[0].vote === '0.5' &&
+            event.room.members[1].vote === '?',
+        ),
+      ),
+    );
+    expect(
+      (
+        await h.request(
+          `${path}/vote`,
+          { vote: '3', round: 1 },
+          second.memberToken,
+        )
+      ).status,
+    ).toBe(409);
+    admin.ws.close();
+    participant.ws.close();
+    other.ws.close();
   });
   it('sends no roster or voting data to unauthenticated sockets and rejects actions and oversized frames', async () => {
     const { path } = await h.room();
@@ -180,7 +231,7 @@ describe('authenticated realtime and presence', () => {
     const restored = await h.snapshot(path, adminToken);
     expect(restored.members.filter((m) => m.connected)).toHaveLength(2);
     assertPrivate(restored);
-    await h.request(`${path}/admin/reveal`, { round: 1 }, adminToken);
+    await h.request(`${path}/reveal`, { round: 1 }, adminToken);
     await waitUntil(() =>
       a.events.some(
         (e) => e.type === 'snapshot' && e.room.members[0].vote === '0.5',

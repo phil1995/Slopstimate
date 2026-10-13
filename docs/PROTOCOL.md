@@ -10,7 +10,7 @@ All API responses use JSON and `Cache-Control: no-store`. API URLs reject query 
 | `POST /api/rooms/:id/join`                | `{name}`                 | None for new identity; member Bearer to resume/rename | `{memberId, memberToken?, room}`; new secret returned once                |
 | `POST /api/rooms/:id/vote`                | `{vote, round}`          | Member Bearer                                         | Current full snapshot; chosen value omitted before reveal                 |
 | `POST /api/rooms/:id/leave`               | `{}`                     | Member Bearer                                         | `{ok:true}`; revokes membership in every tab                              |
-| `POST /api/rooms/:id/admin/reveal`        | `{round}`                | Admin Bearer                                          | Current snapshot                                                          |
+| `POST /api/rooms/:id/reveal`              | `{round}`                | Member or admin Bearer                                | Current snapshot                                                          |
 | `POST /api/rooms/:id/admin/reset`         | `{round}`                | Admin Bearer                                          | Current snapshot                                                          |
 | `POST /api/rooms/:id/admin/settings`      | `{title, deck, version}` | Admin Bearer                                          | Current snapshot                                                          |
 | `POST /api/rooms/:id/admin/remove-member` | `{memberId}`             | Admin Bearer                                          | Current snapshot; removes membership and vote, revokes all target sockets |
@@ -19,9 +19,11 @@ All API responses use JSON and `Cache-Control: no-store`. API URLs reject query 
 
 Secrets and room IDs are lowercase hexadecimal: 64 characters for bearer secrets, 32 for room IDs. Errors are `{error: string}` with 400/401/403/404/409/413/414/415/426/429 as appropriate. Unknown and deleted rooms return 404; visiting them never creates state.
 
-Joining requires a trimmed, nonempty name of 1–40 characters. Names need not be unique; members are identified by their secret-backed IDs. New rooms use `0, 0.5, 1, 2, 3, 8, 13, ?`; `?` means skipping and stays private until reveal, just like estimates. It counts as a completed response but is excluded from numeric averages.
+Joining requires a trimmed, nonempty name of 1–40 characters. Names need not be unique; members are identified by their secret-backed IDs. New rooms use `0, 0.5, 1, 2, 3, 8, 13, ?`; `?` means skipping and stays private until reveal, just like estimates. It counts as a completed response.
 
 Admin member removal is by stable member ID, never name. It removes that member’s current vote without resetting the round, revokes all their sockets after durable commit, and broadcasts the updated snapshot. Repeating a removal for an already-removed ID is a no-op. The person may join again with a new identity.
+
+Any joined participant can reveal the current round using their member bearer token. The admin may also reveal without joining as a voter. `/admin/reveal` remains an alias with the same shared authorization rule. Reset, settings, removal, and deletion remain admin-only. The interface shows all members together below the estimate boxes, with revealed values only beside names. Presence metadata is retained in the protocol for reconnect behavior but is not separated in the UI.
 
 ## Snapshots and consistency
 

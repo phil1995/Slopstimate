@@ -13,7 +13,7 @@ describe('authorization and input defenses', () => {
       member.memberToken,
       'short',
     ]) {
-      for (const action of ['reveal', 'reset', 'settings', 'remove-member']) {
+      for (const action of ['reset', 'settings', 'remove-member']) {
         const response = await h.request(
           `${path}/admin/${action}`,
           { round: 1 },
@@ -28,6 +28,65 @@ describe('authorization and input defenses', () => {
     expect((await h.snapshot(path, adminToken)).round).toBe(1);
     expect((await h.snapshot(path, adminToken)).revealed).toBe(false);
   });
+  it('allows every joined member to reveal through either route and denies strangers or revoked identities', async () => {
+    const { path, adminToken } = await h.room();
+    const member = await h.join(path, 'Participant');
+    const removed = await h.join(path, 'Removed');
+    await h.request(
+      `${path}/admin/remove-member`,
+      { memberId: removed.memberId },
+      adminToken,
+    );
+    await h.request(
+      `${path}/vote`,
+      { vote: '0.5', round: 1 },
+      member.memberToken,
+    );
+    for (const route of ['/reveal', '/admin/reveal']) {
+      for (const token of [
+        undefined,
+        'f'.repeat(64),
+        'invalid',
+        removed.memberToken,
+      ]) {
+        expect(
+          (await h.request(`${path}${route}`, { round: 1 }, token)).status,
+        ).toBe(401);
+      }
+      expect((await h.snapshot(path, adminToken)).revealed).toBe(false);
+    }
+    expect(
+      (await h.request(`${path}/reveal`, { round: 2 }, member.memberToken))
+        .status,
+    ).toBe(409);
+    const revealed = await h.request(
+      `${path}/reveal`,
+      { round: 1 },
+      member.memberToken,
+    );
+    expect(revealed.status).toBe(200);
+    const snapshot = await h.snapshot(path, member.memberToken!);
+    expect(snapshot.revealed).toBe(true);
+    expect(snapshot.members[0].vote).toBe('0.5');
+    await h.request(`${path}/admin/reveal`, { round: 1 }, member.memberToken);
+    expect((await h.snapshot(path, adminToken)).version).toBe(snapshot.version);
+    await h.request(`${path}/admin/reset`, { round: 1 }, adminToken);
+    expect(
+      (await h.request(`${path}/reveal`, { round: 1 }, member.memberToken))
+        .status,
+    ).toBe(409);
+    // Joining suffices; voting is not a prerequisite for revealing.
+    const nonVoter = await h.join(path, 'Non-voter');
+    expect(
+      (
+        await h.request(
+          `${path}/admin/reveal`,
+          { round: 2 },
+          nonVoter.memberToken,
+        )
+      ).status,
+    ).toBe(200);
+  });
   it('removes saved members durably, revokes their identity, and makes repeated removals safe', async () => {
     const { path, adminToken } = await h.room();
     const removed = await h.join(path, 'Stale joiner');
@@ -38,7 +97,7 @@ describe('authorization and input defenses', () => {
       removed.memberToken,
     );
     await h.request(`${path}/vote`, { vote: '8', round: 1 }, kept.memberToken);
-    await h.request(`${path}/admin/reveal`, { round: 1 }, adminToken);
+    await h.request(`${path}/reveal`, { round: 1 }, adminToken);
     for (const memberId of [null, 'invalid', 123]) {
       expect(
         (
@@ -189,7 +248,7 @@ describe('authorization and input defenses', () => {
       };
       if (origin) headers.Origin = origin;
       const response = await h.mf.dispatchFetch(
-        `https://poker.test${path}/admin/reveal`,
+        `https://poker.test${path}/reveal`,
         { method: 'POST', headers, body: '{"round":1}' },
       );
       expect(response.status).toBe(403);

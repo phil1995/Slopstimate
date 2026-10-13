@@ -50,7 +50,7 @@ describe('durable room lifecycle', () => {
       expect(response.status).toBe(200);
       assertPrivate((await response.json()) as never);
     }
-    await h.request(`${path}/admin/reveal`, { round: 1 }, adminToken);
+    await h.request(`${path}/reveal`, { round: 1 }, adminToken);
     expect(
       (await h.snapshot(path, first.memberToken!)).members.map((m) => m.vote),
     ).toEqual(['0.5', '?']);
@@ -85,12 +85,11 @@ describe('durable room lifecycle', () => {
     const publicData = await (await h.request(path)).json();
     expect(publicData).not.toHaveProperty('members');
     expect(
-      (await h.request(`${path}/admin/reveal`, { round: 1 }, adminToken))
-        .status,
+      (await h.request(`${path}/reveal`, { round: 1 }, adminToken)).status,
     ).toBe(200);
     const revealed = await h.snapshot(path, adminToken);
     expect(revealed.members[0].vote).toBe('8');
-    await h.request(`${path}/admin/reveal`, { round: 1 }, adminToken);
+    await h.request(`${path}/reveal`, { round: 1 }, adminToken);
     expect((await h.snapshot(path, adminToken)).version).toBe(revealed.version);
     expect(
       (await h.request(`${path}/vote`, { vote: '0.5', round: 1 }, memberToken))
@@ -108,8 +107,7 @@ describe('durable room lifecycle', () => {
         .status,
     ).toBe(409);
     expect(
-      (await h.request(`${path}/admin/reveal`, { round: 1 }, adminToken))
-        .status,
+      (await h.request(`${path}/reveal`, { round: 1 }, adminToken)).status,
     ).toBe(409);
     expect(
       (await h.request(`${path}/admin/reset`, { round: 99 }, adminToken))
@@ -187,7 +185,7 @@ describe('durable room lifecycle', () => {
     expect(
       (await h.join(path, 'Alex returns', member.memberToken)).memberId,
     ).toBe(member.memberId);
-    await h.request(`${path}/admin/reveal`, { round: 1 }, adminToken);
+    await h.request(`${path}/reveal`, { round: 1 }, adminToken);
     await h.restart();
     expect((await h.snapshot(path, adminToken)).members[0].vote).toBe('13');
     await h.request(path, {}, adminToken, 'DELETE');

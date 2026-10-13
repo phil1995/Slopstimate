@@ -8,15 +8,15 @@ A small, self-hostable planning poker app for teams that want to estimate togeth
 
 ![Slopstimate room with private estimates and a live participant roster](docs/room.png)
 
-![Shared results with voter-name badges below each estimate and skipped votes](docs/overview.png)
+![Revealed estimates beside each participant’s name](docs/overview.png)
 
 - Create a room and share its link. No accounts or invitations to manage.
 - Choose an estimate privately, reveal together, and start the next round.
-- Start with `0, 0.5, 1, 2, 3, 8, 13, ?`. The `?` choice skips an estimate and is excluded from the numeric average. Fibonacci, T-shirt sizes, and custom decks are also available.
-- After reveal, everyone sees an overview with voter-name badges grouped below each estimate.
+- Start with `0, 0.5, 1, 2, 3, 8, 13, ?`. The `?` choice skips an estimate. Fibonacci, T-shirt sizes, and custom decks are also available.
+- Any joined participant can reveal estimates for everyone. Results appear beside each name in the participant list.
 - Admins can remove connected or stale saved members from the roster.
 - Keep the room, settings, and browser identities across weekly meetings.
-- See connected participants separately from saved members. Multiple tabs count once.
+- See every participant in one list below the estimate boxes. Multiple tabs count once.
 - Facilitate without voting, rename yourself, leave a room, or delete it as its admin.
 - Use the app on a phone or laptop with keyboard controls and visible reconnect states.
 
