@@ -74,7 +74,7 @@
   }
   function openSettings() {
     title = c.room!.title;
-    choices = c.room!.deck.join(', ');
+    choices = c.room!.deck.join('\n');
     settingsError = '';
     c.error = '';
     settingsOpen = true;
@@ -84,7 +84,7 @@
     settingsError = '';
     try {
       const nextTitle = validateText(title, 'Title', 80, 'Planning Poker');
-      const nextDeck = validateDeck(choices.split(','));
+      const nextDeck = validateDeck(choices.split(/\r?\n/));
       if (await c.admin('settings', { title: nextTitle, deck: nextDeck }))
         settingsOpen = false;
     } catch (error) {
@@ -498,18 +498,17 @@
       rows="3"
       required></textarea>
     <p class="input-help">
-      Separate options with commas. 2–20 unique choices, up to 16 characters
-      each.
+      One option per line. 2–20 unique choices, up to 16 characters each.
     </p>
     <div class="preset-buttons">
       <button
         class="button secondary compact"
         type="button"
-        onclick={() => (choices = FIBONACCI.join(', '))}>Fibonacci</button
+        onclick={() => (choices = FIBONACCI.join('\n'))}>Fibonacci</button
       ><button
         class="button secondary compact"
         type="button"
-        onclick={() => (choices = TSHIRT.join(', '))}>T-shirt sizes</button
+        onclick={() => (choices = TSHIRT.join('\n'))}>T-shirt sizes</button
       >
     </div>
     <div class="settings-notice">
