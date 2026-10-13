@@ -445,7 +445,6 @@ p {
   padding: 27px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
 }
 .average-panel h2 {
   font-size: 16px;
@@ -463,6 +462,77 @@ p {
   font-size: 12px;
   color: var(--muted);
   line-height: 1.7;
+}
+.average-panel h3 {
+  font-size: 14px;
+  font-weight: 650;
+}
+.disagreement-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 22px;
+}
+.disagreement-badge {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 650;
+  background: var(--background);
+  color: var(--muted);
+}
+.disagreement-badge.low {
+  background: #e9f7ee;
+  color: #24633e;
+}
+.disagreement-badge.medium {
+  background: #fff3d6;
+  color: #805800;
+}
+.disagreement-badge.high {
+  background: #fff0ee;
+  color: #a0352a;
+}
+.summary-help {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.summary-help summary {
+  cursor: pointer;
+}
+.summary-help p {
+  margin-top: 8px;
+}
+.vote-summary {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.vote-summary ul {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0;
+  margin: 14px 0 0;
+}
+.vote-summary li {
+  padding: 7px 12px;
+  border-radius: 8px;
+  background: var(--purple-light);
+  color: var(--purple);
+  font-size: 12px;
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+.vote-summary li.empty-summary {
+  padding: 0;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 400;
 }
 .panel {
   background: white;

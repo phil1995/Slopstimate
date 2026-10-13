@@ -14,7 +14,7 @@ A small, self-hostable planning poker app for teams that want to estimate togeth
 - Choose an estimate privately, reveal together, and reset the estimation.
 - Start with `0, 0.5, 1, 2, 3, 8, 13, ?`. The `?` choice skips an estimate. Fibonacci, T-shirt sizes, and custom decks are also available.
 - Any joined participant can reveal estimates for everyone. Results appear beside each name in the participant list.
-- See the numeric average after reveal, beside the participants on wider screens or below them on smaller screens. Skipped and nonnumeric choices are excluded.
+- See the average, disagreement rating, and counts for each vote after reveal, beside the participants on wider screens or below them on smaller screens. Skipped and nonnumeric choices are excluded from numeric statistics but included in the vote summary. Disagreement measures relative numeric spread; expand the explanation in the app for its thresholds.
 - Admins can remove connected or stale saved members from the roster.
 - Keep the room, settings, and browser identities across weekly meetings.
 - See every participant in one list below the estimate boxes. Multiple tabs count once.
