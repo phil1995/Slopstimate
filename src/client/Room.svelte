@@ -343,11 +343,6 @@
                       maximumFractionDigits: 2,
                     })}
               </p>
-              <p class="average-description">
-                {summary.count
-                  ? `From ${summary.count} numeric ${summary.count === 1 ? 'estimate' : 'estimates'}. Skipped votes are excluded.`
-                  : 'No numeric estimates.'}
-              </p>
               <div class="disagreement-row">
                 <h3>Disagreement</h3>
                 <span
@@ -358,15 +353,6 @@
                   >{summary.disagreement ?? '—'}</span
                 >
               </div>
-              <details class="summary-help">
-                <summary>How is disagreement measured?</summary>
-                <p>
-                  Numeric estimates only. Standard deviation divided by the
-                  absolute average: Low up to 25%, Medium up to 50%, High above
-                  50%. Identical estimates, including a single vote, are Low. No
-                  numeric estimates means no rating.
-                </p>
-              </details>
               <div class="vote-summary">
                 <h3>Vote summary</h3>
                 <ul aria-label="Vote counts">

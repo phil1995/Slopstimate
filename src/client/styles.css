@@ -458,11 +458,6 @@ p {
   margin: 18px 0;
   overflow-wrap: anywhere;
 }
-.average-description {
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.7;
-}
 .average-panel h3 {
   font-size: 14px;
   font-weight: 650;
@@ -493,18 +488,6 @@ p {
 .disagreement-badge.high {
   background: #fff0ee;
   color: #a0352a;
-}
-.summary-help {
-  margin-top: 10px;
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.7;
-}
-.summary-help summary {
-  cursor: pointer;
-}
-.summary-help p {
-  margin-top: 8px;
 }
 .vote-summary {
   margin-top: 22px;
