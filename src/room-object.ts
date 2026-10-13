@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from './worker';
-import { FIBONACCI, TOKEN } from './shared/protocol';
+import { DEFAULT_DECK, ROOM_ID, TOKEN } from './shared/protocol';
 import type { ServerEvent } from './shared/protocol';
 import { ApiError, deck, integer, object, text } from './shared/validation';
 import { bearer, body, failure, hash, json, randomHex } from './server/http';
@@ -36,7 +36,7 @@ export class RoomObject extends DurableObject<Env> {
       const state: RoomState = {
         id,
         title: 'Planning Poker',
-        deck: [...FIBONACCI],
+        deck: [...DEFAULT_DECK],
         round: 1,
         revealed: false,
         version: 1,
@@ -91,11 +91,34 @@ export class RoomObject extends DurableObject<Env> {
         this.send(ws, event);
     }
   }
-  private async commit(state: RoomState): Promise<void> {
+  private async commit(
+    state: RoomState,
+    onCommitted?: () => void,
+  ): Promise<void> {
     state.version++;
     state.updatedAt = Date.now();
     await this.ctx.storage.put('room', state);
+    onCommitted?.();
     this.broadcast(state);
+  }
+  private async removeMember(
+    state: RoomState,
+    memberId: string,
+  ): Promise<void> {
+    if (!state.members.some((member) => member.id === memberId)) return;
+    state.members = state.members.filter((member) => member.id !== memberId);
+    await this.commit(state, () => {
+      // Revoke every tab after the removal is durable and before broadcasting.
+      for (const ws of this.ctx.getWebSockets()) {
+        const attachment = this.attachment(ws);
+        if (attachment.memberId === memberId) {
+          this.send(ws, { type: 'membership_removed' });
+          attachment.authenticated = false;
+          ws.serializeAttachment(attachment);
+          ws.close(4401, 'Membership removed.');
+        }
+      }
+    });
   }
   private async throttle(actor: string, limit = 60): Promise<void> {
     // Durable, bounded minute buckets: restart/hibernation cannot bypass these limits.
@@ -223,23 +246,20 @@ export class RoomObject extends DurableObject<Env> {
         if (path === '/leave' && request.method === 'POST') {
           const member = (await this.authenticate(request, state))!;
           object(await body(request), []);
-          state.members = state.members.filter((m) => m.id !== member.id);
-          // Revoke every tab before broadcasting the updated roster.
-          for (const ws of this.ctx.getWebSockets()) {
-            const attachment = this.attachment(ws);
-            if (attachment.memberId === member.id) {
-              this.send(ws, { type: 'membership_removed' });
-              attachment.authenticated = false;
-              ws.serializeAttachment(attachment);
-              ws.close(4401, 'Membership removed.');
-            }
-          }
-          await this.commit(state);
+          await this.removeMember(state, member.id);
           return json({ ok: true });
         }
         if (path.startsWith('/admin/') && request.method === 'POST') {
           await this.authenticate(request, state, true);
-          if (path === '/admin/settings') {
+          if (path === '/admin/remove-member') {
+            const input = object(await body(request), ['memberId']);
+            if (
+              typeof input.memberId !== 'string' ||
+              !ROOM_ID.test(input.memberId)
+            )
+              throw new ApiError(400, 'Choose a valid member to remove.');
+            await this.removeMember(state, input.memberId);
+          } else if (path === '/admin/settings') {
             const input = object(await body(request), [
               'title',
               'deck',

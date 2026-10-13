@@ -4,7 +4,8 @@
   import Icon from './Icon.svelte';
   import Modal from './Modal.svelte';
   import { RoomController } from './room.svelte';
-  import { FIBONACCI, TSHIRT } from '../shared/protocol';
+  import { DEFAULT_DECK, FIBONACCI, TSHIRT } from '../shared/protocol';
+  import type { PublicMember } from '../shared/protocol';
   import {
     deck as validateDeck,
     text as validateText,
@@ -20,7 +21,8 @@
   let title = $state('');
   let choices = $state('');
   let settingsError = $state('');
-  let confirmation = $state<'delete' | 'leave' | null>(null);
+  let confirmation = $state<'delete' | 'leave' | 'remove' | null>(null);
+  let removingMember = $state<PublicMember | null>(null);
   let copyTimer: ReturnType<typeof setTimeout>;
   const online = $derived(c.room?.members.filter((m) => m.connected) ?? []);
   const voted = $derived(online.filter((m) => m.voted).length);
@@ -48,12 +50,10 @@
       : null,
   );
   const tally = $derived(
-    c.room?.deck
-      .map((vote) => ({
-        vote,
-        count: allVotes.filter((m) => m.vote === vote).length,
-      }))
-      .filter((item) => item.count > 0) ?? [],
+    c.room?.deck.map((vote) => ({
+      vote,
+      members: allVotes.filter((m) => m.vote === vote),
+    })) ?? [],
   );
   onMount(() => {
     void c.start();
@@ -102,7 +102,11 @@
   }
   async function confirm() {
     const success =
-      confirmation === 'delete' ? await c.delete() : await c.leave();
+      confirmation === 'delete'
+        ? await c.delete()
+        : confirmation === 'remove' && removingMember
+          ? await c.removeMember(removingMember.id)
+          : await c.leave();
     if (success) confirmation = null;
   }
 </script>
@@ -249,13 +253,44 @@
                   ? 'Different estimates? That’s where the conversation starts.'
                   : 'No estimates this round. Start a new one when everyone is ready.'}
               </p>
-              <div class="tally" aria-label="Vote tally">
-                {#each tally as item (item.vote)}<div class="tally-item">
-                    <strong>{item.vote}</strong><span
-                      >{item.count} {item.count === 1 ? 'vote' : 'votes'}</span
+              <section
+                class="results-overview"
+                aria-label="Shared voting overview"
+              >
+                <p class="results-caption">
+                  Everyone in the session sees these results. Names appear below
+                  each estimate.
+                </p>
+                <div class="results-grid">
+                  {#each tally as item (item.vote)}
+                    <section
+                      class="estimate-group"
+                      aria-label={item.vote === '?'
+                        ? 'Skipped votes'
+                        : `Estimate ${item.vote}`}
                     >
-                  </div>{/each}
-              </div>
+                      <h3>{item.vote}</h3>
+                      <p class="estimate-count">
+                        {item.vote === '?' ? 'Skipped · ' : ''}{item.members
+                          .length}
+                        {item.members.length === 1 ? 'vote' : 'votes'}
+                      </p>
+                      <ul class="estimate-members">
+                        {#each item.members as member (member.id)}
+                          <li
+                            class="voter-badge"
+                            aria-label={`${member.name}: ${item.vote === '?' ? 'skipped' : 'voted'}`}
+                          >
+                            <Icon name="check" size={13} /><span
+                              >{member.name}</span
+                            >
+                          </li>
+                        {/each}
+                      </ul>
+                    </section>
+                  {/each}
+                </div>
+              </section>
               {#if average !== null}<div class="average">
                   <span>Numeric average</span><strong>{average}</strong><small
                     >From {numericVotes.length} numeric {numericVotes.length ===
@@ -285,7 +320,9 @@
                     class:long-option={vote.length > 3}
                     aria-label={vote === '☕'
                       ? 'Vote coffee break'
-                      : `Vote ${vote}`}
+                      : vote === '?'
+                        ? 'Skip this estimate (?)'
+                        : `Vote ${vote}`}
                     aria-pressed={c.selected === vote}
                     disabled={!ready}
                     onclick={() => c.vote(vote)}
@@ -296,7 +333,11 @@
                           size={30}
                         />{:else}{vote}{/if}</strong
                     ><span class="card-bottom" aria-hidden="true"
-                      >{c.selected === vote ? '✓' : vote}</span
+                      >{c.selected === vote
+                        ? '✓'
+                        : vote === '?'
+                          ? 'Skip'
+                          : vote}</span
                     ></button
                   >{/each}
               </div>
@@ -391,7 +432,9 @@
                       ? 'Offline · saved member'
                       : c.room.revealed
                         ? member.voted
-                          ? 'Estimate revealed'
+                          ? member.vote === '?'
+                            ? 'Skipped this estimate'
+                            : 'Estimate revealed'
                           : 'No estimate'
                         : member.voted
                           ? 'Ready to reveal'
@@ -399,13 +442,27 @@
                   >
                 </div>
                 {#if c.room.revealed}<span class="revealed-vote"
-                    >{member.vote ?? '—'}</span
+                    >{member.vote === '?'
+                      ? '? · Skip'
+                      : (member.vote ?? '—')}</span
                   >{:else if member.voted}<span
                     class="member-voted"
                     aria-label="Voted"><Icon name="check" size={15} /></span
                   >{:else}<span class="member-pending" aria-label="Not voted"
                     >—</span
                   >{/if}
+                {#if c.isAdmin}
+                  <button
+                    class="icon-button remove-member-button"
+                    aria-label={`Remove ${member.name} from room`}
+                    disabled={!ready}
+                    onclick={() => {
+                      removingMember = member;
+                      c.error = '';
+                      confirmation = 'remove';
+                    }}><Icon name="close" size={15} /></button
+                  >
+                {/if}
               </div>{:else}<div class="empty-roster">
                 <Icon name="people" size={30} />
                 <p>
@@ -504,6 +561,11 @@
       <button
         class="button secondary compact"
         type="button"
+        onclick={() => (choices = DEFAULT_DECK.join('\n'))}>Team default</button
+      >
+      <button
+        class="button secondary compact"
+        type="button"
         onclick={() => (choices = FIBONACCI.join('\n'))}>Fibonacci</button
       ><button
         class="button secondary compact"
@@ -558,14 +620,20 @@
 >
 <Modal
   open={confirmation !== null}
-  title={confirmation === 'delete' ? 'Delete this room?' : 'Leave the room?'}
+  title={confirmation === 'delete'
+    ? 'Delete this room?'
+    : confirmation === 'remove'
+      ? `Remove ${removingMember?.name ?? 'member'}?`
+      : 'Leave the room?'}
   onClose={() => {
     if (!c.busy) confirmation = null;
   }}
   ><p>
     {confirmation === 'delete'
       ? 'This permanently deletes the room, its members, and its current votes. The shared link will stop working. This cannot be undone.'
-      : 'Your membership and current vote will be removed, and this device will forget your participant identity. You can join again with a new name.'}
+      : confirmation === 'remove'
+        ? `${removingMember?.name ?? 'This member'} will be removed from the room, including their current vote. All their connected tabs will be disconnected. They can join again with a name using the room link.`
+        : 'Your membership and current vote will be removed, and this device will forget your participant identity. You can join again with a new name.'}
   </p>
   {#if confirmation === 'leave' && c.isAdmin}<p class="input-help">
       You’ll keep admin access in this browser and can still facilitate.
@@ -577,7 +645,7 @@
       onclick={() => (confirmation = null)}>Cancel</button
     ><button
       class="button"
-      class:danger={confirmation === 'delete'}
+      class:danger={confirmation === 'delete' || confirmation === 'remove'}
       class:primary={confirmation === 'leave'}
       disabled={!ready}
       onclick={confirm}
@@ -585,7 +653,9 @@
         ? 'Working…'
         : confirmation === 'delete'
           ? 'Delete permanently'
-          : 'Leave and forget me'}</button
+          : confirmation === 'remove'
+            ? 'Remove member'
+            : 'Leave and forget me'}</button
     >
   </div></Modal
 >

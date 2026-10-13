@@ -86,7 +86,7 @@ describe('authenticated realtime and presence', () => {
     );
     expect(unauth.events).toHaveLength(0);
     unauth.ws.send(
-      JSON.stringify({ type: 'vote', vote: '5', memberId: member.memberId }),
+      JSON.stringify({ type: 'vote', vote: '0.5', memberId: member.memberId }),
     );
     await waitUntil(() => unauth.ws.readyState === 3);
     expect(unauth.events.every((e) => e.type === 'error')).toBe(true);
@@ -114,6 +114,48 @@ describe('authenticated realtime and presence', () => {
     await h.request(path, {}, adminToken, 'DELETE');
     await waitUntil(() => admin.events.some((e) => e.type === 'room_deleted'));
   });
+  it('admin removal revokes every target tab and updates all remaining participants', async () => {
+    const { path, adminToken } = await h.room();
+    const target = await h.join(path, 'Alex');
+    const remaining = await h.join(path, 'Alex');
+    const first = await h.socket(path, { memberToken: target.memberToken });
+    const second = await h.socket(path, { memberToken: target.memberToken });
+    const observer = await h.socket(path, {
+      memberToken: remaining.memberToken,
+    });
+    const admin = await h.socket(path, { adminToken });
+    await h.request(
+      `${path}/vote`,
+      { vote: '?', round: 1 },
+      target.memberToken,
+    );
+    await h.request(
+      `${path}/admin/remove-member`,
+      { memberId: target.memberId },
+      adminToken,
+    );
+    await waitUntil(() =>
+      [first, second].every((client) =>
+        client.events.some((event) => event.type === 'membership_removed'),
+      ),
+    );
+    await waitUntil(() =>
+      [observer, admin].every((client) =>
+        client.events.some(
+          (event) =>
+            event.type === 'snapshot' &&
+            event.room.members.length === 1 &&
+            event.room.members[0].id === remaining.memberId,
+        ),
+      ),
+    );
+    assertPrivate(await h.snapshot(path, adminToken));
+    expect(
+      (await h.snapshot(path, remaining.memberToken!)).members[0].connected,
+    ).toBe(true);
+    observer.ws.close();
+    admin.ws.close();
+  });
   it('restores verified socket attachments and presence after hibernation', async () => {
     const { path, roomId, adminToken } = await h.room();
     const alex = await h.join(path, 'Alex');
@@ -127,7 +169,11 @@ describe('authenticated realtime and presence', () => {
       name: roomId,
       webSockets: 'hibernate',
     });
-    await h.request(`${path}/vote`, { vote: '21', round: 1 }, alex.memberToken);
+    await h.request(
+      `${path}/vote`,
+      { vote: '0.5', round: 1 },
+      alex.memberToken,
+    );
     await waitUntil(() =>
       b.events.some((e) => e.type === 'snapshot' && e.room.members[0].voted),
     );
@@ -137,7 +183,7 @@ describe('authenticated realtime and presence', () => {
     await h.request(`${path}/admin/reveal`, { round: 1 }, adminToken);
     await waitUntil(() =>
       a.events.some(
-        (e) => e.type === 'snapshot' && e.room.members[0].vote === '21',
+        (e) => e.type === 'snapshot' && e.room.members[0].vote === '0.5',
       ),
     );
     a.ws.close();

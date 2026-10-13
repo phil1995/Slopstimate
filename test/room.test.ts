@@ -19,6 +19,45 @@ describe('durable room lifecycle', () => {
     ).toBe(404);
     expect((await h.request(unknown)).status).toBe(404);
   });
+  it('uses the team deck, requires names, allows duplicates, and preserves fractional and skipped choices', async () => {
+    const { path, adminToken } = await h.room();
+    expect((await h.snapshot(path, adminToken)).deck).toEqual([
+      '0',
+      '0.5',
+      '1',
+      '2',
+      '3',
+      '8',
+      '13',
+      '?',
+    ]);
+    for (const input of [{}, { name: '' }, { name: '   ' }]) {
+      expect((await h.request(`${path}/join`, input)).status).toBe(400);
+    }
+    const first = await h.join(path, 'Alex');
+    const second = await h.join(path, 'Alex');
+    expect(first.memberId).not.toBe(second.memberId);
+    expect(second.room.members.map((m) => m.name)).toEqual(['Alex', 'Alex']);
+    for (const [member, vote] of [
+      [first, '0.5'],
+      [second, '?'],
+    ] as const) {
+      const response = await h.request(
+        `${path}/vote`,
+        { vote, round: 1 },
+        member.memberToken,
+      );
+      expect(response.status).toBe(200);
+      assertPrivate((await response.json()) as never);
+    }
+    await h.request(`${path}/admin/reveal`, { round: 1 }, adminToken);
+    expect(
+      (await h.snapshot(path, first.memberToken!)).members.map((m) => m.vote),
+    ).toEqual(['0.5', '?']);
+    expect(await h.snapshot(path, second.memberToken!)).toEqual(
+      await h.snapshot(path, adminToken),
+    );
+  });
   it('reuses membership and changes names without creating duplicates', async () => {
     const room = await h.room();
     const joined = await h.join(room.path, '  Alex  ');
@@ -54,7 +93,7 @@ describe('durable room lifecycle', () => {
     await h.request(`${path}/admin/reveal`, { round: 1 }, adminToken);
     expect((await h.snapshot(path, adminToken)).version).toBe(revealed.version);
     expect(
-      (await h.request(`${path}/vote`, { vote: '5', round: 1 }, memberToken))
+      (await h.request(`${path}/vote`, { vote: '0.5', round: 1 }, memberToken))
         .status,
     ).toBe(409);
     await h.request(`${path}/admin/reset`, { round: 1 }, adminToken);

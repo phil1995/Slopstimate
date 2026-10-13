@@ -265,6 +265,20 @@ export class RoomController {
     });
     return result ?? false;
   }
+  async removeMember(memberId: string): Promise<boolean> {
+    if (!this.isAdmin || this.connection !== 'connected') return false;
+    const result = await this.action(async () => {
+      this.apply(
+        await api<RoomSnapshot>(
+          `${this.path}/admin/remove-member`,
+          { memberId },
+          readIdentity(this.id).adminToken,
+        ),
+      );
+      return true;
+    });
+    return result ?? false;
+  }
   async leave(): Promise<boolean> {
     const result = await this.action(async () => {
       await api(`${this.path}/leave`, {}, readIdentity(this.id).memberToken);

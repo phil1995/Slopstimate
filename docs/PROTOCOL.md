@@ -2,21 +2,26 @@
 
 All API responses use JSON and `Cache-Control: no-store`. API URLs reject query parameters; bearer secrets must never be placed in URLs. HTTP bodies must be `application/json`, at most 4096 bytes. Mutating requests and WebSocket upgrades must include an allowed Origin (the request origin or an exact configured `ALLOWED_ORIGINS` entry). No wildcard origins or cookie authentication are used.
 
-| Endpoint                             | Request                  | Authority                                             | Response                                                   |
-| ------------------------------------ | ------------------------ | ----------------------------------------------------- | ---------------------------------------------------------- |
-| `POST /api/rooms`                    | `{}`                     | None                                                  | `201 {roomId, adminToken}`; secret returned once           |
-| `GET /api/rooms/:id`                 | —                        | None                                                  | Basic metadata only: id/title/deck/round/revealed/version  |
-| `GET /api/rooms/:id`                 | —                        | Member or admin Bearer                                | Redacted/revealed full snapshot                            |
-| `POST /api/rooms/:id/join`           | `{name}`                 | None for new identity; member Bearer to resume/rename | `{memberId, memberToken?, room}`; new secret returned once |
-| `POST /api/rooms/:id/vote`           | `{vote, round}`          | Member Bearer                                         | Current full snapshot; chosen value omitted before reveal  |
-| `POST /api/rooms/:id/leave`          | `{}`                     | Member Bearer                                         | `{ok:true}`; revokes membership in every tab               |
-| `POST /api/rooms/:id/admin/reveal`   | `{round}`                | Admin Bearer                                          | Current snapshot                                           |
-| `POST /api/rooms/:id/admin/reset`    | `{round}`                | Admin Bearer                                          | Current snapshot                                           |
-| `POST /api/rooms/:id/admin/settings` | `{title, deck, version}` | Admin Bearer                                          | Current snapshot                                           |
-| `DELETE /api/rooms/:id`              | `{}`                     | Admin Bearer                                          | `{ok:true}`; permanent tombstone                           |
-| `GET /api/rooms/:id/ws`              | WebSocket upgrade        | Authenticate in first frame                           | Events below                                               |
+| Endpoint                                  | Request                  | Authority                                             | Response                                                                  |
+| ----------------------------------------- | ------------------------ | ----------------------------------------------------- | ------------------------------------------------------------------------- |
+| `POST /api/rooms`                         | `{}`                     | None                                                  | `201 {roomId, adminToken}`; secret returned once                          |
+| `GET /api/rooms/:id`                      | —                        | None                                                  | Basic metadata only: id/title/deck/round/revealed/version                 |
+| `GET /api/rooms/:id`                      | —                        | Member or admin Bearer                                | Redacted/revealed full snapshot                                           |
+| `POST /api/rooms/:id/join`                | `{name}`                 | None for new identity; member Bearer to resume/rename | `{memberId, memberToken?, room}`; new secret returned once                |
+| `POST /api/rooms/:id/vote`                | `{vote, round}`          | Member Bearer                                         | Current full snapshot; chosen value omitted before reveal                 |
+| `POST /api/rooms/:id/leave`               | `{}`                     | Member Bearer                                         | `{ok:true}`; revokes membership in every tab                              |
+| `POST /api/rooms/:id/admin/reveal`        | `{round}`                | Admin Bearer                                          | Current snapshot                                                          |
+| `POST /api/rooms/:id/admin/reset`         | `{round}`                | Admin Bearer                                          | Current snapshot                                                          |
+| `POST /api/rooms/:id/admin/settings`      | `{title, deck, version}` | Admin Bearer                                          | Current snapshot                                                          |
+| `POST /api/rooms/:id/admin/remove-member` | `{memberId}`             | Admin Bearer                                          | Current snapshot; removes membership and vote, revokes all target sockets |
+| `DELETE /api/rooms/:id`                   | `{}`                     | Admin Bearer                                          | `{ok:true}`; permanent tombstone                                          |
+| `GET /api/rooms/:id/ws`                   | WebSocket upgrade        | Authenticate in first frame                           | Events below                                                              |
 
 Secrets and room IDs are lowercase hexadecimal: 64 characters for bearer secrets, 32 for room IDs. Errors are `{error: string}` with 400/401/403/404/409/413/414/415/426/429 as appropriate. Unknown and deleted rooms return 404; visiting them never creates state.
+
+Joining requires a trimmed, nonempty name of 1–40 characters. Names need not be unique; members are identified by their secret-backed IDs. New rooms use `0, 0.5, 1, 2, 3, 8, 13, ?`; `?` means skipping and stays private until reveal, just like estimates. It counts as a completed response but is excluded from numeric averages.
+
+Admin member removal is by stable member ID, never name. It removes that member’s current vote without resetting the round, revokes all their sockets after durable commit, and broadcasts the updated snapshot. Repeating a removal for an already-removed ID is a no-op. The person may join again with a new identity.
 
 ## Snapshots and consistency
 

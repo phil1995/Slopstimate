@@ -13,7 +13,7 @@ describe('authorization and input defenses', () => {
       member.memberToken,
       'short',
     ]) {
-      for (const action of ['reveal', 'reset', 'settings']) {
+      for (const action of ['reveal', 'reset', 'settings', 'remove-member']) {
         const response = await h.request(
           `${path}/admin/${action}`,
           { round: 1 },
@@ -27,6 +27,65 @@ describe('authorization and input defenses', () => {
     }
     expect((await h.snapshot(path, adminToken)).round).toBe(1);
     expect((await h.snapshot(path, adminToken)).revealed).toBe(false);
+  });
+  it('removes saved members durably, revokes their identity, and makes repeated removals safe', async () => {
+    const { path, adminToken } = await h.room();
+    const removed = await h.join(path, 'Stale joiner');
+    const kept = await h.join(path, 'Current member');
+    await h.request(
+      `${path}/vote`,
+      { vote: '0.5', round: 1 },
+      removed.memberToken,
+    );
+    await h.request(`${path}/vote`, { vote: '8', round: 1 }, kept.memberToken);
+    await h.request(`${path}/admin/reveal`, { round: 1 }, adminToken);
+    for (const memberId of [null, 'invalid', 123]) {
+      expect(
+        (
+          await h.request(
+            `${path}/admin/remove-member`,
+            { memberId },
+            adminToken,
+          )
+        ).status,
+      ).toBe(400);
+    }
+    const response = await h.request(
+      `${path}/admin/remove-member`,
+      { memberId: removed.memberId },
+      adminToken,
+    );
+    expect(response.status).toBe(200);
+    const snapshot = await h.snapshot(path, adminToken);
+    expect(snapshot.members.map((m) => m.id)).toEqual([kept.memberId]);
+    expect(snapshot.members[0].vote).toBe('8');
+    expect(snapshot.revealed).toBe(true);
+    await h.request(
+      `${path}/admin/remove-member`,
+      { memberId: removed.memberId },
+      adminToken,
+    );
+    expect((await h.snapshot(path, adminToken)).version).toBe(snapshot.version);
+    await h.restart();
+    expect(
+      (await h.snapshot(path, adminToken)).members.map((m) => m.id),
+    ).toEqual([kept.memberId]);
+    expect(
+      (await h.request(`${path}/join`, { name: 'Return' }, removed.memberToken))
+        .status,
+    ).toBe(401);
+    expect(
+      (
+        await h.request(
+          `${path}/vote`,
+          { vote: '1', round: 1 },
+          removed.memberToken,
+        )
+      ).status,
+    ).toBe(401);
+    expect((await h.join(path, 'Stale joiner')).memberId).not.toBe(
+      removed.memberId,
+    );
   });
   it('rejects impersonation and invalidates departed member secrets', async () => {
     const { path } = await h.room();
@@ -184,7 +243,7 @@ describe('authorization and input defenses', () => {
     for (let i = 0; i < 61; i++)
       response = await h.request(
         `${path}/vote`,
-        { vote: i % 2 ? '3' : '5', round: 1 },
+        { vote: i % 2 ? '3' : '0.5', round: 1 },
         memberToken,
       );
     expect(response!.status).toBe(429);

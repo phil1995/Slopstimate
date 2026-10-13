@@ -8,9 +8,13 @@ A small, self-hostable planning poker app for teams that want to estimate togeth
 
 ![Slopstimate room with private estimates and a live participant roster](docs/room.png)
 
+![Shared results with voter-name badges below each estimate and skipped votes](docs/overview.png)
+
 - Create a room and share its link. No accounts or invitations to manage.
 - Choose an estimate privately, reveal together, and start the next round.
-- Use Fibonacci, T-shirt sizes, or your own deck of 2–20 options.
+- Start with `0, 0.5, 1, 2, 3, 8, 13, ?`. The `?` choice skips an estimate and is excluded from the numeric average. Fibonacci, T-shirt sizes, and custom decks are also available.
+- After reveal, everyone sees an overview with voter-name badges grouped below each estimate.
+- Admins can remove connected or stale saved members from the roster.
 - Keep the room, settings, and browser identities across weekly meetings.
 - See connected participants separately from saved members. Multiple tabs count once.
 - Facilitate without voting, rename yourself, leave a room, or delete it as its admin.
@@ -46,13 +50,15 @@ npm run deploy
 
 Wrangler creates the Durable Object namespace using the single `v1` SQLite migration. Keep that migration and the `ROOM` binding stable on subsequent deployments to preserve your rooms. The deploy script always builds the frontend first.
 
+Existing rooms keep their saved deck. To use the team deck in one, select **Room settings → Team default → Save settings**; changing the deck starts a new round.
+
 ## Keep your room access
 
 The creating browser stores a room-specific admin secret in `localStorage` **before** opening the room. Reopening that URL in the same browser restores admin controls. The shared URL never contains this secret.
 
 There is no recovery or ownership transfer. Clearing browser storage, using another browser/device/origin, or losing the secret loses admin access. Create a new room if that happens. Moving from `workers.dev` to a custom domain also changes browser storage: start rooms on the domain you intend to keep.
 
-Joining stores a separate participant secret and your display name for that room. **Leave room** removes your membership and vote and forgets your participant identity on this device; every tab using that membership is disconnected. An admin who leaves as a participant keeps their separate admin access. Offline memberships remain until their owner leaves or the admin deletes the room.
+Joining requires a trimmed display name of 1–40 characters; duplicate names are allowed. Separate participant identities keep people with the same name distinct. Joining stores a separate participant secret and your display name for that room. **Leave room** removes your membership and vote and forgets your participant identity on this device; every tab using that membership is disconnected. An admin who leaves as a participant keeps their separate admin access. Offline memberships remain until their owner leaves, the admin removes them, or the admin deletes the room. Admin removal also removes the current vote and revokes every connected tab for that membership. A removed person can join again with a name using the room link.
 
 ## Local development
 
