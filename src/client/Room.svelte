@@ -4,6 +4,7 @@
   import Icon from './Icon.svelte';
   import Modal from './Modal.svelte';
   import { RoomController } from './room.svelte';
+  import { summarizeEstimates } from './estimates';
   import { DEFAULT_DECK, FIBONACCI, TSHIRT } from '../shared/protocol';
   import type { PublicMember } from '../shared/protocol';
   import {
@@ -25,6 +26,9 @@
   let copyTimer: ReturnType<typeof setTimeout>;
   const members = $derived(c.room?.members ?? []);
   const voted = $derived(members.filter((member) => member.voted).length);
+  const summary = $derived(
+    c.memberId || c.isAdmin ? summarizeEstimates(c.room) : null,
+  );
   const ready = $derived(c.connection === 'connected' && !c.busy);
   onMount(() => {
     void c.start();
@@ -101,7 +105,7 @@
     <main id="main-content" class="empty-page" aria-live="polite">
       <div class="spinner"></div>
       <h1>Making room for you…</h1>
-      <p>Getting the team’s latest round.</p>
+      <p>Loading the current estimation.</p>
     </main>
   {:else if c.notFound}
     <main id="main-content" class="empty-page">
@@ -139,7 +143,6 @@
                 offline: 'You’re offline',
                 join: 'Join to connect',
               }[c.connection]}</span
-            ><span class="subtitle-dot">·</span><span>Round {c.room.round}</span
             >{#if c.isAdmin}<span class="admin-badge">You’re the admin</span
               >{/if}
           </div>
@@ -170,8 +173,8 @@
           role="status"
         >
           {c.connection === 'offline'
-            ? 'You’re offline. Your last saved round is shown below.'
-            : 'Reconnecting to the room. We’ll catch up with the current round automatically.'}<button
+            ? 'You’re offline. Your last saved estimation is shown below.'
+            : 'Reconnecting to the room. We’ll catch up with the current estimation automatically.'}<button
             class="text-button"
             onclick={c.connect}>Retry now</button
           >
@@ -260,76 +263,100 @@
                     class="button secondary"
                     disabled={!ready}
                     onclick={() => c.admin('reset')}
-                    ><Icon name="reset" size={18} />{c.room.revealed
-                      ? 'Next round'
-                      : 'Reset round'}</button
+                    ><Icon name="reset" size={18} />Reset estimation</button
                   >{/if}
               </div>
             </div>
           {/if}
         </section>
-        <section class="participants-panel panel" aria-labelledby="team-title">
-          <div class="participants-heading">
-            <h2 id="team-title">
-              Participants <span class="count-badge">{members.length}</span>
-            </h2>
-            {#if c.hasMembership}<div class="identity-actions">
-                <button
-                  class="text-button"
-                  onclick={() => {
-                    name = c.name;
-                    c.error = '';
-                    renameOpen = true;
-                  }}
-                  disabled={!ready}>Change name</button
-                >
-                <button
-                  class="text-button"
-                  onclick={() => {
-                    c.error = '';
-                    confirmation = 'leave';
-                  }}
-                  disabled={!ready}>Leave room</button
-                >
-              </div>{/if}
-          </div>
-          <ul class="roster" aria-label="Participants and estimates">
-            {#each members as member (member.id)}
-              <li class="member-row">
-                <span class="member-name">{member.name}</span>
-                <div class="member-actions">
-                  {#if c.room.revealed}<span
-                      class="revealed-vote"
-                      aria-label={`${member.name}: ${member.vote === '?' ? 'skipped' : (member.vote ?? 'no estimate')}`}
-                      title={member.vote === '?'
-                        ? 'Skipped'
-                        : (member.vote ?? 'No estimate')}
-                      >{member.vote ?? '—'}</span
-                    >
-                  {:else if member.voted}<span
-                      class="member-voted"
-                      aria-label={`${member.name}: voted`}
-                      ><Icon name="check" size={16} /></span
-                    >
-                  {:else}<span
-                      class="member-pending"
-                      aria-label={`${member.name}: not voted`}>—</span
-                    >{/if}
-                  {#if c.isAdmin}<button
-                      class="icon-button remove-member-button"
-                      aria-label={`Remove ${member.name} from room`}
-                      disabled={!ready}
-                      onclick={() => {
-                        removingMember = member;
-                        c.error = '';
-                        confirmation = 'remove';
-                      }}><Icon name="close" size={16} /></button
-                    >{/if}
-                </div>
-              </li>
-            {:else}<li class="empty-roster">No participants yet.</li>{/each}
-          </ul>
-        </section>
+        <div class="estimation-results" class:revealed={summary !== null}>
+          <section
+            class="participants-panel panel"
+            aria-labelledby="team-title"
+          >
+            <div class="participants-heading">
+              <h2 id="team-title">
+                Participants <span class="count-badge">{members.length}</span>
+              </h2>
+              {#if c.hasMembership}<div class="identity-actions">
+                  <button
+                    class="text-button"
+                    onclick={() => {
+                      name = c.name;
+                      c.error = '';
+                      renameOpen = true;
+                    }}
+                    disabled={!ready}>Change name</button
+                  >
+                  <button
+                    class="text-button"
+                    onclick={() => {
+                      c.error = '';
+                      confirmation = 'leave';
+                    }}
+                    disabled={!ready}>Leave room</button
+                  >
+                </div>{/if}
+            </div>
+            <ul class="roster" aria-label="Participants and estimates">
+              {#each members as member (member.id)}
+                <li class="member-row">
+                  <span class="member-name">{member.name}</span>
+                  <div class="member-actions">
+                    {#if c.room.revealed}<span
+                        class="revealed-vote"
+                        aria-label={`${member.name}: ${member.vote === '?' ? 'skipped' : (member.vote ?? 'no estimate')}`}
+                        title={member.vote === '?'
+                          ? 'Skipped'
+                          : (member.vote ?? 'No estimate')}
+                        >{member.vote ?? '—'}</span
+                      >
+                    {:else if member.voted}<span
+                        class="member-voted"
+                        aria-label={`${member.name}: voted`}
+                        ><Icon name="check" size={16} /></span
+                      >
+                    {:else}<span
+                        class="member-pending"
+                        aria-label={`${member.name}: not voted`}>—</span
+                      >{/if}
+                    {#if c.isAdmin}<button
+                        class="icon-button remove-member-button"
+                        aria-label={`Remove ${member.name} from room`}
+                        disabled={!ready}
+                        onclick={() => {
+                          removingMember = member;
+                          c.error = '';
+                          confirmation = 'remove';
+                        }}><Icon name="close" size={16} /></button
+                      >{/if}
+                  </div>
+                </li>
+              {:else}<li class="empty-roster">No participants yet.</li>{/each}
+            </ul>
+          </section>
+          {#if summary}
+            <section
+              class="average-panel panel"
+              aria-labelledby="average-title"
+              aria-live="polite"
+            >
+              <h2 id="average-title">Average estimate</h2>
+              <p class="average-value">
+                {summary.mean === null
+                  ? '—'
+                  : summary.mean.toLocaleString(undefined, {
+                      maximumFractionDigits: 2,
+                    })}
+              </p>
+              <p class="average-description">
+                {summary.count
+                  ? `From ${summary.count} numeric ${summary.count === 1 ? 'estimate' : 'estimates'}. Skipped votes are excluded.`
+                  : 'No numeric estimates.'}
+              </p>
+            </section>
+          {/if}
+        </div>
       </div>
     </main>
   {/if}
@@ -390,7 +417,7 @@
     </div>
     <div class="settings-notice">
       <Icon name="reset" size={18} />
-      <p>Changing the deck starts a new round and clears current votes.</p>
+      <p>Changing the deck resets the estimation and clears current votes.</p>
     </div>
     {#if settingsError || c.error}<p role="alert" class="alert">
         {settingsError || c.error}

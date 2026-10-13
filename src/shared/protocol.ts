@@ -8,6 +8,7 @@ export interface RoomMetadata {
   id: string;
   title: string;
   deck: string[];
+  // Internal estimation revision for stale-request protection, not a visible round number.
   round: number;
   revealed: boolean;
   version: number;

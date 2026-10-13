@@ -11,16 +11,17 @@ A small, self-hostable planning poker app for teams that want to estimate togeth
 ![Revealed estimates beside each participant’s name](docs/overview.png)
 
 - Create a room and share its link. No accounts or invitations to manage.
-- Choose an estimate privately, reveal together, and start the next round.
+- Choose an estimate privately, reveal together, and reset the estimation.
 - Start with `0, 0.5, 1, 2, 3, 8, 13, ?`. The `?` choice skips an estimate. Fibonacci, T-shirt sizes, and custom decks are also available.
 - Any joined participant can reveal estimates for everyone. Results appear beside each name in the participant list.
+- See the numeric average after reveal, beside the participants on wider screens or below them on smaller screens. Skipped and nonnumeric choices are excluded.
 - Admins can remove connected or stale saved members from the roster.
 - Keep the room, settings, and browser identities across weekly meetings.
 - See every participant in one list below the estimate boxes. Multiple tabs count once.
 - Facilitate without voting, rename yourself, leave a room, or delete it as its admin.
 - Use the app on a phone or laptop with keyboard controls and visible reconnect states.
 
-No stories, archives, analytics, or vote history. Only the current round is stored; resetting overwrites its votes. Rooms never automatically expire. Anyone with the room link can join, so share it with your team.
+No stories, archives, analytics, or vote history. Only the current estimation is stored; resetting overwrites its votes. Rooms never automatically expire. Anyone with the room link can join, so share it with your team.
 
 ## Deploy to your own Cloudflare account
 
@@ -50,7 +51,7 @@ npm run deploy
 
 Wrangler creates the Durable Object namespace using the single `v1` SQLite migration. Keep that migration and the `ROOM` binding stable on subsequent deployments to preserve your rooms. The deploy script always builds the frontend first.
 
-Existing rooms keep their saved deck. To use the team deck in one, select **Room settings → Team default → Save settings**; changing the deck starts a new round.
+Existing rooms keep their saved deck. To use the team deck in one, select **Room settings → Team default → Save settings**; changing the deck resets the estimation.
 
 ## Keep your room access
 

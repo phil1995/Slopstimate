@@ -25,6 +25,8 @@ Admin member removal is by stable member ID, never name. It removes that memberâ
 
 Any joined participant can reveal the current round using their member bearer token. The admin may also reveal without joining as a voter. `/admin/reveal` remains an alias with the same shared authorization rule. Reset, settings, removal, and deletion remain admin-only. The interface shows all members together below the estimate boxes, with revealed values only beside names. Presence metadata is retained in the protocol for reconnect behavior but is not separated in the UI.
 
+The product presents a single current estimation with a **Reset estimation** action, without numbered rounds. The existing `round` field remains an internal estimation revision for compatibility and rejection of stale votes/reveals/resets; no history is stored. On reveal, clients calculate the arithmetic mean of current finite decimal estimates, including zero and fractional choices. Skipped, missing, and nonnumeric choices are excluded. The average is shown beside participants on wide screens and below them on narrow screens; when there are no numeric estimates it shows `â€”`, not zero. Reset hides the average and clears values.
+
 ## Snapshots and consistency
 
 The types live in `src/shared/protocol.ts`. A full room snapshot extends metadata with `members: {id, name, voted, connected, vote?}[]`. The `vote` property is **absent** until `revealed === true`; once revealed, it is a deck string or `null` for non-voters. Token hashes, timestamps, and raw credentials are never serialized into a snapshot. Unauthenticated metadata contains no roster or estimates, even after reveal.

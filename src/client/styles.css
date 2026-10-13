@@ -409,9 +409,6 @@ p {
 .connection.live .tiny-dot {
   color: #4a9e7b;
 }
-.subtitle-dot {
-  color: #c1c1cb;
-}
 .admin-badge {
   font-size: 10px;
   color: var(--purple);
@@ -434,6 +431,38 @@ p {
 .room-content {
   display: grid;
   gap: 22px;
+}
+.estimation-results {
+  display: grid;
+  gap: 22px;
+  align-items: start;
+}
+.estimation-results.revealed {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.average-panel {
+  align-self: stretch;
+  padding: 27px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.average-panel h2 {
+  font-size: 16px;
+  font-weight: 650;
+}
+.average-value {
+  font-size: 56px;
+  line-height: 1.2;
+  font-weight: 650;
+  color: var(--purple);
+  margin: 18px 0;
+  overflow-wrap: anywhere;
+}
+.average-description {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
 }
 .panel {
   background: white;
@@ -848,6 +877,11 @@ dialog .danger-zone p {
   .hero-art {
     transform: scale(0.85);
     transform-origin: center;
+  }
+}
+@media (max-width: 800px) {
+  .estimation-results.revealed {
+    grid-template-columns: 1fr;
   }
 }
 @media (max-width: 760px) {

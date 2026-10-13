@@ -227,12 +227,15 @@ export class RoomObject extends DurableObject<Env> {
         if (path === '/vote' && request.method === 'POST') {
           const member = (await this.authenticate(request, state))!;
           const input = object(await body(request), ['vote', 'round']);
-          if (integer(input.round, 'Round') !== state.round)
-            throw new ApiError(409, 'The round changed. Please choose again.');
+          if (integer(input.round, 'Estimation revision') !== state.round)
+            throw new ApiError(
+              409,
+              'The estimation changed. Please choose again.',
+            );
           if (state.revealed)
             throw new ApiError(
               409,
-              'Voting is locked. Wait for the next round.',
+              'Voting is locked until the estimation is reset.',
             );
           const vote = text(input.vote, 'Vote', 16);
           if (!state.deck.includes(vote))
@@ -257,8 +260,11 @@ export class RoomObject extends DurableObject<Env> {
               'Join the room before revealing estimates.',
             );
           const input = object(await body(request), ['round']);
-          if (integer(input.round, 'Round') !== state.round)
-            throw new ApiError(409, 'The round changed. Please try again.');
+          if (integer(input.round, 'Estimation revision') !== state.round)
+            throw new ApiError(
+              409,
+              'The estimation changed. Please try again.',
+            );
           if (!state.revealed) {
             state.revealed = true;
             await this.commit(state);
@@ -304,11 +310,14 @@ export class RoomObject extends DurableObject<Env> {
             }
           } else if (path === '/admin/reset') {
             const input = object(await body(request), ['round']);
-            const round = integer(input.round, 'Round');
+            const round = integer(input.round, 'Estimation revision');
             if (round !== state.round) {
               // Retrying the same reset is harmless. Future rounds are never accepted.
               if (round > state.round)
-                throw new ApiError(409, 'The round changed. Please try again.');
+                throw new ApiError(
+                  409,
+                  'The estimation changed. Please try again.',
+                );
             } else {
               this.reset(state);
               await this.commit(state);
