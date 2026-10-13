@@ -25,7 +25,6 @@
   let removingMember = $state<PublicMember | null>(null);
   let copyTimer: ReturnType<typeof setTimeout>;
   const members = $derived(c.room?.members ?? []);
-  const voted = $derived(members.filter((member) => member.voted).length);
   const summary = $derived(
     c.memberId || c.isAdmin ? summarizeEstimates(c.room) : null,
   );
@@ -246,27 +245,22 @@
                 </form>
               {/if}
             </div>
-            <div class="round-footer">
-              <p class="round-progress" aria-live="polite">
-                {voted} of {members.length} voted{c.room.revealed
-                  ? ' · Revealed'
-                  : ''}
-              </p>
-              <div class="round-actions">
-                {#if !c.room.revealed}<button
-                    class="button primary"
-                    disabled={!ready}
-                    onclick={() => c.reveal()}
-                    ><Icon name="eye" size={18} />Reveal estimates</button
-                  >{/if}
-                {#if c.isAdmin}<button
-                    class="button secondary"
-                    disabled={!ready}
-                    onclick={() => c.admin('reset')}
-                    ><Icon name="reset" size={18} />Reset estimation</button
-                  >{/if}
-              </div>
-            </div>
+            {#if !c.room.revealed || c.isAdmin}<div class="round-footer">
+                <div class="round-actions">
+                  {#if !c.room.revealed}<button
+                      class="button primary"
+                      disabled={!ready}
+                      onclick={() => c.reveal()}
+                      ><Icon name="eye" size={18} />Reveal estimates</button
+                    >{/if}
+                  {#if c.isAdmin}<button
+                      class="button secondary"
+                      disabled={!ready}
+                      onclick={() => c.admin('reset')}
+                      ><Icon name="reset" size={18} />Reset estimation</button
+                    >{/if}
+                </div>
+              </div>{/if}
           {/if}
         </section>
         <div class="estimation-results" class:revealed={summary !== null}>

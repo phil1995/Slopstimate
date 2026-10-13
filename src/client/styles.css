@@ -598,15 +598,11 @@ p {
 .round-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 20px;
   flex-wrap: wrap;
   padding: 19px 27px;
   border-top: 1px solid var(--line);
-}
-.round-progress {
-  color: var(--muted);
-  font-size: 12px;
 }
 .round-actions {
   display: flex;
