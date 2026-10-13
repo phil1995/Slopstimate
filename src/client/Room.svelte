@@ -91,14 +91,12 @@
 <div class="site-shell room-shell">
   <header class="site-header">
     <Brand />
-    <div class="header-meta">
-      <span class="small-pill">PLANNING POKER</span><a
-        class="quiet-link"
-        href="https://github.com/phil1995/Slopstimate"
-        target="_blank"
-        rel="noreferrer">GitHub <Icon name="arrow" size={15} /></a
-      >
-    </div>
+    <a
+      class="quiet-link"
+      href="https://github.com/phil1995/Slopstimate"
+      target="_blank"
+      rel="noreferrer">GitHub <Icon name="arrow" size={15} /></a
+    >
   </header>
   {#if c.loading || (c.resolvingIdentity && !c.notFound)}
     <main id="main-content" class="empty-page" aria-live="polite">
@@ -141,25 +139,24 @@
     </main>
   {:else}
     <main id="main-content" class="room-main">
-      <div class="room-heading">
-        <div>
-          <div class="eyebrow">YOUR TEAM’S ESTIMATION ROOM</div>
-          <h1>{c.room.title}</h1>
-          <div class="room-subtitle">
-            <span class="connection" class:live={c.connection === 'connected'}
-              ><span class="tiny-dot"></span>{{
-                connected: 'Live connection',
-                connecting: 'Connecting…',
-                reconnecting: 'Reconnecting…',
-                offline: 'You’re offline',
-                join: 'Join to connect',
-              }[c.connection]}</span
-            >{#if c.isAdmin}<span class="admin-badge">You’re the admin</span
-              >{/if}
-          </div>
+      <h1 class="sr-only">{c.room.title}</h1>
+      <div class="room-toolbar">
+        <div class="room-status">
+          <span class="connection" class:live={c.connection === 'connected'}
+            ><span class="tiny-dot"></span>{{
+              connected: 'Live connection',
+              connecting: 'Connecting…',
+              reconnecting: 'Reconnecting…',
+              offline: 'You’re offline',
+              join: 'Join to connect',
+            }[c.connection]}</span
+          >{#if c.isAdmin}<span class="admin-badge">You’re the admin</span>{/if}
         </div>
-        <div class="heading-actions">
-          <button class="button secondary" onclick={copyLink}
+        <div class="room-actions">
+          <button
+            class="button secondary"
+            onclick={copyLink}
+            aria-label={copied ? 'Link copied' : 'Invite team'}
             ><Icon name={copied ? 'check' : 'link'} size={18} />{copied
               ? 'Link copied'
               : 'Invite team'}</button
