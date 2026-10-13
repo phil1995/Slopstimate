@@ -10,6 +10,7 @@ import { identityKey, readIdentity, saveIdentity } from './storage';
 export class RoomController {
   room = $state<RoomSnapshot | null>(null);
   loading = $state(true);
+  resolvingIdentity = $state(false);
   notFound = $state(false);
   error = $state('');
   connection = $state<
@@ -58,6 +59,7 @@ export class RoomController {
   private handleError(error: unknown) {
     if (error instanceof HttpError && error.status === 404) {
       this.notFound = true;
+      this.resolvingIdentity = false;
       this.disconnect();
     } else
       this.error = error instanceof Error ? error.message : 'Please try again.';
@@ -93,6 +95,10 @@ export class RoomController {
     this.disconnect();
     if (this.stopped || this.notFound) return;
     const saved = readIdentity(this.id);
+    this.resolvingIdentity =
+      !!(saved.memberToken || saved.adminToken) &&
+      !this.memberId &&
+      !this.isAdmin;
     if (!saved.memberToken && !saved.adminToken) {
       this.connection = 'join';
       return;
@@ -134,6 +140,7 @@ export class RoomController {
         this.memberId = event.memberId;
         this.isAdmin = event.isAdmin;
         this.hasMembership = !!event.memberId;
+        this.resolvingIdentity = false;
         this.connection = 'connected';
         this.failures = 0;
         this.error = '';
@@ -152,6 +159,7 @@ export class RoomController {
       } else if (event.type === 'snapshot') this.apply(event.room);
       else if (event.type === 'room_deleted') {
         this.notFound = true;
+        this.resolvingIdentity = false;
         this.disconnect();
       } else if (event.type === 'membership_removed') {
         saveIdentity(this.id, { memberToken: undefined });
@@ -168,6 +176,7 @@ export class RoomController {
       if (this.stopped || this.notFound || ws !== this.ws) return;
       if (event.code === 4404) {
         this.notFound = true;
+        this.resolvingIdentity = false;
         return;
       }
       if (event.code === 4401) {
@@ -176,14 +185,16 @@ export class RoomController {
         this.hasMembership = false;
         // Keep the independent admin secret when a membership was revoked.
         this.isAdmin = false;
-        this.connection = 'join';
-        if (readIdentity(this.id).adminToken)
-          this.retry = setTimeout(this.connect, 500);
+        const hasAdminToken = !!readIdentity(this.id).adminToken;
+        this.resolvingIdentity = hasAdminToken;
+        this.connection = hasAdminToken ? 'reconnecting' : 'join';
+        if (hasAdminToken) this.retry = setTimeout(this.connect, 500);
         return;
       }
       if (event.code === 4403) {
         saveIdentity(this.id, { adminToken: undefined });
         this.isAdmin = false;
+        this.resolvingIdentity = false;
         this.connection = 'join';
         return;
       }

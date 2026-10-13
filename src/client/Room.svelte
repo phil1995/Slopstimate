@@ -100,11 +100,23 @@
       >
     </div>
   </header>
-  {#if c.loading}
+  {#if c.loading || (c.resolvingIdentity && !c.notFound)}
     <main id="main-content" class="empty-page" aria-live="polite">
-      <div class="spinner"></div>
-      <h1>Making room for you…</h1>
-      <p>Loading the current estimation.</p>
+      {#if c.connection !== 'offline'}<div class="spinner"></div>{/if}
+      <h1>
+        {c.connection === 'offline'
+          ? 'You’re offline.'
+          : 'Making room for you…'}
+      </h1>
+      <p>
+        {c.connection === 'offline'
+          ? 'Check your connection and try again.'
+          : 'Loading the current estimation.'}
+      </p>
+      {#if c.error}<p role="alert">{c.error}</p>{/if}
+      {#if c.connection === 'offline' || c.connection === 'reconnecting'}
+        <button class="button secondary" onclick={c.connect}>Retry now</button>
+      {/if}
     </main>
   {:else if c.notFound}
     <main id="main-content" class="empty-page">
